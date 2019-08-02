@@ -18,7 +18,7 @@ where T: Send, E:Send
     fn on_start(&self) -> Response<()>;
     fn on_commit(&self) -> Response<()>;
     fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Response<()>;
-    fn on_completed(self) -> Response<()>;
+    fn on_completed(&self) -> Response<()>;
 }
 
 // Stop listening to changes from the observable

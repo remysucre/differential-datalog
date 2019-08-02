@@ -42,5 +42,7 @@ fn main() -> Result<(), String> {
     s1.on_completed()?;
 
     sub.unsubscribe();
+    s1.shutdown()?;
+    Arc::try_unwrap(s2_a).unwrap().shutdown()?;
     Ok(())
 }

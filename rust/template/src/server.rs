@@ -56,6 +56,18 @@ impl DDlogServer
         self.outlets.push(outlet);
         self.outlets.last_mut().unwrap()
     }
+
+    pub fn shutdown(self) -> Response<()> {
+        self.prog.stop()?;
+        for outlet in &self.outlets {
+            let observer = outlet.observer.clone();
+            let observer = observer.lock().unwrap();
+            if let Some(ref observer) = *observer {
+                observer.on_completed()?;
+            }
+        };
+        Ok(())
+    }
 }
 
 pub struct Outlet
@@ -133,8 +145,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         }))
     }
 
-    fn on_completed(self) -> Response<()> {
-        self.prog.stop()
-        // TODO stop the programs in the oulets too
+    fn on_completed(&self) -> Response<()> {
+        Ok(())
     }
 }
