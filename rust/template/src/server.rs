@@ -9,20 +9,23 @@ use std::sync::{Arc, Mutex};
 use std::fmt::{Debug, Formatter};
 use std::fmt;
 
-pub struct UpdatesSubscription<'a> {
-    observer: &'a mut Option<Arc<Mutex<dyn Observer<Update<super::Value>, String>>>>,
+pub struct UpdatesSubscription {
+    observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>
 }
 
-impl <'a> UpdatesSubscription<'a> {
-    pub fn new(observer: &'a mut Option<Arc<Mutex<dyn Observer<Update<super::Value>, String>>>>) -> Self {
-        UpdatesSubscription{observer: observer}
+impl UpdatesSubscription {
+    pub fn new(observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>) -> Self {
+        UpdatesSubscription{
+            observer: observer
+        }
     }
 }
 
-impl <'a> Subscription for UpdatesSubscription<'a> {
+impl Subscription for UpdatesSubscription {
     fn unsubscribe(self: Box<Self>) {
         println!("unsubscribing");
-        *self.observer = None;
+        let mut observer = self.observer.lock().unwrap();
+        *observer = None;
     }
 }
 
@@ -46,7 +49,10 @@ impl DDlogServer
     }
 
     pub fn stream(&mut self, tables: HashSet<RelId>) -> &mut Outlet {
-        let outlet = Outlet{tables : tables, observer : None};
+        let outlet = Outlet{
+            tables : tables,
+            observer : Arc::new(Mutex::new(None))
+        };
         self.outlets.push(outlet);
         self.outlets.last_mut().unwrap()
     }
@@ -55,33 +61,37 @@ impl DDlogServer
 pub struct Outlet
 {
     tables: HashSet<RelId>,
-    observer: Option<Arc<Mutex<dyn Observer<Update<super::Value>, String>>>>
+    observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>
 }
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
     fn subscribe<'a>(&'a mut self,
-                     observer: Arc<Mutex<dyn Observer<Update<super::Value>, String>>>)
+                     observer: Arc<dyn Observer<Update<super::Value>, String> + Sync>)
                      -> Box<dyn Subscription + 'a>
     {
-        self.observer = Some(observer);
-        Box::new(UpdatesSubscription::new(&mut self.observer))
+        let observer = Arc::new(Mutex::new(Some(observer)));
+        self.observer = observer.clone();
+        Box::new(UpdatesSubscription::new(observer.clone()))
     }
 }
 
+
 impl Observer<Update<super::Value>, String> for DDlogServer
 {
-    fn on_start(&mut self) -> Response<()> {
+    fn on_start(&self) -> Response<()> {
         self.prog.transaction_start()
     }
 
-    fn on_commit(&mut self) -> Response<()> {
+    fn on_commit(&self) -> Response<()> {
         let changes = self.prog.transaction_commit_dump_changes()?;
         for change in changes.as_ref().iter() {
             println!{"Got {:?}", change};
         }
-        for outlet in &mut self.outlets {
-            if let Some(ref observer) = outlet.observer {
+        for outlet in &self.outlets {
+            let observer = outlet.observer.clone();
+            let observer = observer.lock().unwrap();
+            if let Some(ref observer) = *observer {
                 let upds = outlet.tables.iter().flat_map(|table| {
                     changes.as_ref().get(table).unwrap().iter().map(move |(val, weight)| {
                         debug_assert!(*weight == 1 || *weight == -1);
@@ -93,7 +103,6 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                     })
                 });
 
-                let mut observer = observer.lock().unwrap();
                 observer.on_start()?;
                 observer.on_updates(Box::new(upds))?;
                 observer.on_commit()?;
@@ -102,7 +111,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         Ok(())
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
+    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
         self.prog.apply_valupdates(updates.map(|upd| match upd {
             Update::Insert{relid: relid, v: v} =>
                 Update::Insert{
