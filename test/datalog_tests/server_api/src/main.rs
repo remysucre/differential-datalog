@@ -42,6 +42,16 @@ fn main() -> Result<(), String> {
     s1.on_completed()?;
 
     sub.unsubscribe();
+
+    let rec2 = Record::Bool(true);
+    let table_id2 = RelIdentifier::RelId(lr_left_Left as usize);
+    let updates2 = &[UpdCmd::Delete(table_id2, rec2)];
+
+    s1.on_start()?;
+    s1.on_updates(Box::new(updates2.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())))?;
+    s1.on_commit()?;
+    s1.on_completed()?;
+
     s1.shutdown()?;
     Arc::try_unwrap(s2_a).unwrap().shutdown()?;
     Ok(())
