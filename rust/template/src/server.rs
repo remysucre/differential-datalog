@@ -66,9 +66,9 @@ pub struct Outlet
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
-    fn subscribe<'a>(&'a mut self,
+    fn subscribe(&mut self,
                      observer: Arc<dyn Observer<Update<super::Value>, String> + Sync>)
-                     -> Box<dyn Subscription + 'a>
+                     -> Box<dyn Subscription>
     {
         let observer = Arc::new(Mutex::new(Some(observer)));
         self.observer = observer.clone();
@@ -135,5 +135,6 @@ impl Observer<Update<super::Value>, String> for DDlogServer
 
     fn on_completed(self) -> Response<()> {
         self.prog.stop()
+        // TODO stop the programs in the oulets too
     }
 }

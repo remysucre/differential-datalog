@@ -6,7 +6,7 @@ use ddd_ddlog::channel::{Observable, Observer};
 use ddd_ddlog::server;
 
 use std::collections::{HashSet, HashMap};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 fn main() -> Result<(), String> {
     // Construct left server with no redirect
@@ -27,8 +27,8 @@ fn main() -> Result<(), String> {
     let outlet = s1.stream(tables);
 
     // Right server subscribes to the stream
-    let s2_a = Arc::new(Mutex::new(s2));
-    outlet.subscribe(s2_a.clone());
+    let s2_a = Arc::new(s2);
+    let sub = outlet.subscribe(s2_a.clone());
 
     // Insert `true` to Left in left server
     let rec = Record::Bool(true);
@@ -41,8 +41,6 @@ fn main() -> Result<(), String> {
     s1.on_commit()?;
     s1.on_completed()?;
 
-    // Shut down right server
-    //Arc::try_unwrap(s2_a).unwrap().lock().unwrap().on_completed()
-    s2_a.lock().unwrap().on_completed()
-
+    sub.unsubscribe();
+    Ok(())
 }

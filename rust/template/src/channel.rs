@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 pub trait Observable<T, E>
 where T: Send, E:Send
 {
-    fn subscribe<'a>(&'a mut self, observer: Arc<dyn Observer<T, E> + Sync>) -> Box<dyn Subscription + 'a>;
+    fn subscribe(&mut self, observer: Arc<dyn Observer<T, E> + Sync>) -> Box<dyn Subscription>;
 }
 
 // The channel is an observer of changes from
