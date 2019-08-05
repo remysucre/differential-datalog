@@ -10,20 +10,13 @@ use std::fmt::{Debug, Formatter};
 use std::fmt;
 
 pub struct UpdatesSubscription {
+    // This points to the observer field in the outlet,
+    // and sets it to `None` upon unsubscribing.
     observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>
-}
-
-impl UpdatesSubscription {
-    pub fn new(observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>) -> Self {
-        UpdatesSubscription{
-            observer: observer
-        }
-    }
 }
 
 impl Subscription for UpdatesSubscription {
     fn unsubscribe(self: Box<Self>) {
-        println!("unsubscribing");
         let mut observer = self.observer.lock().unwrap();
         *observer = None;
     }
@@ -82,9 +75,10 @@ impl Observable<Update<super::Value>, String> for Outlet
                      observer: Arc<dyn Observer<Update<super::Value>, String> + Sync>)
                      -> Box<dyn Subscription>
     {
-        let observer = Arc::new(Mutex::new(Some(observer)));
-        self.observer = observer.clone();
-        Box::new(UpdatesSubscription::new(observer.clone()))
+        self.observer = Arc::new(Mutex::new(Some(observer)));
+        Box::new(UpdatesSubscription{
+            observer: self.observer.clone()
+        })
     }
 }
 
@@ -133,15 +127,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                 Update::DeleteValue{
                     relid: *self.redirect.get(&relid).unwrap(),
                     v: v},
-            Update::DeleteKey{relid: relid, k: k} =>
-                Update::DeleteKey{
-                    relid: *self.redirect.get(&relid).unwrap(),
-                    k: k},
-            Update::Modify{relid: relid, k: k, m: m} =>
-                Update::Modify{
-                    relid: *self.redirect.get(&relid).unwrap(),
-                    k: k,
-                    m: m},
+            _otherwise => panic!("Operation not allowed"),
         }))
     }
 
