@@ -2,7 +2,7 @@ use differential_datalog::program::{RelId, Update, Response};
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
 
 use api::*;
-use channel::*;
+use observe::*;
 
 use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Mutex};
@@ -82,7 +82,6 @@ impl Observable<Update<super::Value>, String> for Outlet
     }
 }
 
-
 impl Observer<Update<super::Value>, String> for DDlogServer
 {
     fn on_start(&self) -> Response<()> {
@@ -129,6 +128,10 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                     v: v},
             _otherwise => panic!("Operation not allowed"),
         }))
+    }
+
+    fn on_error(&self, error: String) {
+        println!("error: {:?}", error);
     }
 
     fn on_completed(&self) -> Response<()> {
