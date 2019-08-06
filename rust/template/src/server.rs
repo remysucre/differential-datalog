@@ -41,13 +41,17 @@ impl DDlogServer
         DDlogServer{prog: prog, outlets: Vec::new(), redirect: redirect}
     }
 
-    pub fn stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
+    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
         let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
             observer : Arc::new(Mutex::new(None))
         }));
         self.outlets.push(outlet.clone());
         outlet.clone()
+    }
+
+    pub fn remove_stream(&mut self, outlet: Arc<Mutex<Outlet>>) {
+        self.outlets.retain(|o| !Arc::ptr_eq(&o, &outlet));
     }
 
     pub fn shutdown(self) -> Response<()> {
