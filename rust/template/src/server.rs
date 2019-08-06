@@ -42,6 +42,17 @@ impl DDlogServer
     }
 
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
+        if let Some(ref db) = self.prog.db {
+            let db = db.clone();
+            let db = db.lock().unwrap();
+            for relid in &tables {
+                assert!(db.as_ref().contains_key(&relid),
+                "Attempting to listen to non-existent table")
+            }
+        } else {
+            assert!(tables.is_empty(),
+                    "Attempting to listen to an empty DB")
+        }
         let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
             observer : Arc::new(Mutex::new(None))
@@ -104,15 +115,17 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             let observer = observer.lock().unwrap();
             if let Some(ref observer) = *observer {
                 let upds = outlet.tables.iter().flat_map(|table| {
-                    changes.as_ref().get(table).unwrap().iter().map(move |(val, weight)| {
-                        debug_assert!(*weight == 1 || *weight == -1);
-                        if *weight == 1 {
-                            Update::Insert{relid: *table, v: val.clone()}
-                        } else {
-                            Update::DeleteValue{relid: *table, v: val.clone()}
-                        }
+                    changes.as_ref().get(table).map(|t| {
+                        t.iter().map(move |(val, weight)| {
+                            debug_assert!(*weight == 1 || *weight == -1);
+                            if *weight == 1 {
+                                Update::Insert{relid: *table, v: val.clone()}
+                            } else {
+                                Update::DeleteValue{relid: *table, v: val.clone()}
+                            }
+                        })
                     })
-                });
+                }).flatten();
 
                 observer.on_start()?;
                 observer.on_updates(Box::new(upds))?;
@@ -126,11 +139,11 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         self.prog.apply_valupdates(updates.map(|upd| match upd {
             Update::Insert{relid: relid, v: v} =>
                 Update::Insert{
-                    relid: *self.redirect.get(&relid).unwrap(),
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
                     v: v},
             Update::DeleteValue{relid: relid, v: v} =>
                 Update::DeleteValue{
-                    relid: *self.redirect.get(&relid).unwrap(),
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
                     v: v},
             _otherwise => panic!("Operation not allowed"),
         }))
