@@ -25,7 +25,7 @@ impl Subscription for UpdatesSubscription {
 pub struct DDlogServer
 {
     prog: HDDlog,
-    outlets: Vec<Outlet>,
+    outlets: Vec<Arc<Mutex<Outlet>>>,
     redirect: HashMap<RelId, RelId>
 }
 
@@ -41,18 +41,19 @@ impl DDlogServer
         DDlogServer{prog: prog, outlets: Vec::new(), redirect: redirect}
     }
 
-    pub fn stream(&mut self, tables: HashSet<RelId>) -> &mut Outlet {
-        let outlet = Outlet{
+    pub fn stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
+        let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
             observer : Arc::new(Mutex::new(None))
-        };
-        self.outlets.push(outlet);
-        self.outlets.last_mut().unwrap()
+        }));
+        self.outlets.push(outlet.clone());
+        outlet.clone()
     }
 
     pub fn shutdown(self) -> Response<()> {
         self.prog.stop()?;
         for outlet in &self.outlets {
+            let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
             let observer = observer.lock().unwrap();
             if let Some(ref observer) = *observer {
@@ -94,6 +95,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             println!{"Got {:?}", change};
         }
         for outlet in &self.outlets {
+            let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
             let observer = observer.lock().unwrap();
             if let Some(ref observer) = *observer {

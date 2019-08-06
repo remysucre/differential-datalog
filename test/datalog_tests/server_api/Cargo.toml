@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 ddd = {path = "../ddd_ddlog"}
 differential_datalog = {path = "../ddd_ddlog/differential_datalog"}
+observe = {path = "../ddd_ddlog/observe"}

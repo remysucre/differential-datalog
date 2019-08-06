@@ -1,8 +1,8 @@
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
+use observe::{Observer, Observable};
 
 use ddd_ddlog::api::*;
 use ddd_ddlog::Relations::*;
-use ddd_ddlog::channel::{Observable, Observer};
 use ddd_ddlog::server;
 
 use std::collections::{HashSet, HashMap};
@@ -28,6 +28,7 @@ fn main() -> Result<(), String> {
 
     // Right server subscribes to the stream
     let s2_a = Arc::new(s2);
+    let mut outlet = outlet.lock().unwrap();
     let sub = outlet.subscribe(s2_a.clone());
 
     // Insert `true` to Left in left server
