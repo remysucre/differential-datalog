@@ -42,8 +42,8 @@ impl DDlogServer
     }
 
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
-        //let deltadb = self.prog.deltadb.clone();
-        //let db = deltadb.lock().unwrap();
+        //let db = self.prog.db.clone();
+        //let db = db.lock().unwrap();
         //if let Some(ref db) = *db {
         //    for relid in &tables {
         //        assert!(db.as_ref().contains_key(&relid),
