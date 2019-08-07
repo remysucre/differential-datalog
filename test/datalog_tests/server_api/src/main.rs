@@ -27,10 +27,13 @@ fn main() -> Result<(), String> {
     let outlet = s1.add_stream(tables);
 
     // Right server subscribes to the stream
-    let s2_a = Arc::new(s2);
-    let stream = outlet.clone();
-    let mut stream = stream.lock().unwrap();
-    let sub = stream.subscribe(s2_a.clone());
+    let s2 = Arc::new(s2);
+    let sub = {
+        let s2_a = server::ADDlogServer(s2.clone());
+        let stream = outlet.clone();
+        let mut stream = stream.lock().unwrap();
+        stream.subscribe(Box::new(s2_a))
+    };
 
     // Insert `true` to Left in left server
     let rec = Record::Bool(true);
@@ -56,6 +59,6 @@ fn main() -> Result<(), String> {
 
     s1.remove_stream(outlet);
     s1.shutdown()?;
-    Arc::try_unwrap(s2_a).unwrap().shutdown()?;
+    Arc::try_unwrap(s2).unwrap().shutdown()?;
     Ok(())
 }

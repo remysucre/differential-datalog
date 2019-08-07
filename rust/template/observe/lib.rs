@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
 pub trait Observable<T, E>
 where T: Send, E:Send
 {
-    fn subscribe(&mut self, observer: Arc<dyn Observer<T, E> + Sync>) -> Box<dyn Subscription>;
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, E> + Sync>) -> Box<dyn Subscription>;
 }
 
 // The channel is an observer of changes from

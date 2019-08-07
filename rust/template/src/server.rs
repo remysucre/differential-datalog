@@ -12,7 +12,7 @@ use std::fmt;
 pub struct UpdatesSubscription {
     // This points to the observer field in the outlet,
     // and sets it to `None` upon unsubscribing.
-    observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String> + Sync>>>>
 }
 
 impl Subscription for UpdatesSubscription {
@@ -42,17 +42,17 @@ impl DDlogServer
     }
 
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
-        if let Some(ref db) = self.prog.db {
-            let db = db.clone();
-            let db = db.lock().unwrap();
-            for relid in &tables {
-                assert!(db.as_ref().contains_key(&relid),
-                "Attempting to listen to non-existent table")
-            }
-        } else {
-            assert!(tables.is_empty(),
-                    "Attempting to listen to an empty DB")
-        }
+        //let deltadb = self.prog.deltadb.clone();
+        //let db = deltadb.lock().unwrap();
+        //if let Some(ref db) = *db {
+        //    for relid in &tables {
+        //        assert!(db.as_ref().contains_key(&relid),
+        //        "Attempting to listen to non-existent table")
+        //    }
+        //} else {
+        //    assert!(tables.is_empty(),
+        //            "Attempting to listen to an empty DB")
+        //}
         let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
             observer : Arc::new(Mutex::new(None))
@@ -82,19 +82,45 @@ impl DDlogServer
 pub struct Outlet
 {
     tables: HashSet<RelId>,
-    observer: Arc<Mutex<Option<Arc<dyn Observer<Update<super::Value>, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String> + Sync>>>>
 }
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
     fn subscribe(&mut self,
-                     observer: Arc<dyn Observer<Update<super::Value>, String> + Sync>)
+                     observer: Box<dyn Observer<Update<super::Value>, String> + Sync>)
                      -> Box<dyn Subscription>
     {
-        self.observer = Arc::new(Mutex::new(Some(observer)));
+        let obs = self.observer.clone();
+        let mut obs = obs.lock().unwrap();
+        *obs = Some(observer);
         Box::new(UpdatesSubscription{
             observer: self.observer.clone()
         })
+    }
+}
+
+pub struct ADDlogServer(pub Arc<DDlogServer>);
+
+impl Observer<Update<super::Value>, String> for ADDlogServer {
+    fn on_start(&self) -> Response<()> {
+        self.0.on_start()
+    }
+
+    fn on_commit(&self) -> Response<()> {
+        self.0.on_commit()
+    }
+
+    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
+        self.0.on_updates(updates)
+    }
+
+    fn on_error(&self, error: String) {
+        self.0.on_error(error)
+    }
+
+    fn on_completed(&self) -> Response<()> {
+        self.0.on_completed()
     }
 }
 
@@ -110,6 +136,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             println!{"Got {:?}", change};
         }
         for outlet in &self.outlets {
+            let outlet = outlet.clone();
             let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
             let observer = observer.lock().unwrap();
