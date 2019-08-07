@@ -24,12 +24,13 @@ fn main() -> Result<(), String> {
     // Stream Middle table from left server
     let mut tables = HashSet::new();
     tables.insert(lr_left_Middle as usize);
-    let outlet = s1.stream(tables);
+    let outlet = s1.add_stream(tables);
 
     // Right server subscribes to the stream
     let s2_a = Arc::new(s2);
-    let mut outlet = outlet.lock().unwrap();
-    let sub = outlet.subscribe(s2_a.clone());
+    let stream = outlet.clone();
+    let mut stream = stream.lock().unwrap();
+    let sub = stream.subscribe(s2_a.clone());
 
     // Insert `true` to Left in left server
     let rec = Record::Bool(true);
@@ -53,6 +54,7 @@ fn main() -> Result<(), String> {
     s1.on_commit()?;
     s1.on_completed()?;
 
+    s1.remove_stream(outlet);
     s1.shutdown()?;
     Arc::try_unwrap(s2_a).unwrap().shutdown()?;
     Ok(())
