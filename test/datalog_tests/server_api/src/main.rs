@@ -6,7 +6,7 @@ use ddd_ddlog::Relations::*;
 use ddd_ddlog::server;
 
 use std::collections::{HashSet, HashMap};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), String> {
     // Construct left server with no redirect
@@ -27,7 +27,7 @@ fn main() -> Result<(), String> {
     let outlet = s1.add_stream(tables);
 
     // Right server subscribes to the stream
-    let s2 = Arc::new(s2);
+    let s2 = Arc::new(Mutex::new(s2));
     let sub = {
         let s2_a = server::ADDlogServer(s2.clone());
         let stream = outlet.clone();
@@ -59,6 +59,6 @@ fn main() -> Result<(), String> {
 
     s1.remove_stream(outlet);
     s1.shutdown()?;
-    Arc::try_unwrap(s2).unwrap().shutdown()?;
+    // TODO how to shutdown s2? Maybe at Drop?
     Ok(())
 }

@@ -11,10 +11,10 @@ where T: Send, E:Send
 pub trait Observer<T, E>: Send
 where T: Send, E:Send
 {
-    fn on_start(&self) -> Result<(), E>;
-    fn on_commit(&self) -> Result<(), E>;
-    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E>;
-    fn on_completed(&self) -> Result<(), E>;
+    fn on_start(&mut self) -> Result<(), E>;
+    fn on_commit(&mut self) -> Result<(), E>;
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E>;
+    fn on_completed(&mut self) -> Result<(), E>;
     fn on_error(&self, error: E);
 }
 

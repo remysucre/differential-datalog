@@ -1,23 +1,14 @@
 extern crate serde_json;
 
-use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
-use differential_datalog::program::{RelId, Update, Response};
-
-use ddd_ddlog::api::*;
-use ddd_ddlog::Relations::*;
-use ddd_ddlog::channel::{Observable, Observer, Subscription};
-use ddd_ddlog::server::{UpdatesSubscription};
+use differential_datalog::program::{Update, Response};
+use observe::{Observer};
 use ddd_ddlog::*;
 
-use tokio::net::{TcpStream, TcpListener};
+use tokio::net::{TcpStream};
 use tokio::net::tcp::ConnectFuture;
 use tokio::prelude::*;
-use tokio::io;
 
-use std::sync::{Arc, Mutex};
-use std::net::{SocketAddr, Shutdown};
-use std::iter;
-use std::io::BufReader;
+use std::net::{SocketAddr};
 
 pub struct TcpSender{
     addr: SocketAddr,
@@ -77,11 +68,11 @@ impl Observer<Update<Value>, String> for TcpSender {
         Ok(())
     }
 
-    fn on_completed(self) -> Response<()> {
-        // TODO Properly shutdown client and server. This might
-        // involve calling shutdown on client and dropping the server.
+    fn on_completed(&mut self) -> Response<()> {
         Ok(())
     }
+
+    fn on_error(&self, _error: String) {}
 }
 
 fn main() -> Response<()> {

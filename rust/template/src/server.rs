@@ -70,8 +70,8 @@ impl DDlogServer
         for outlet in &self.outlets {
             let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
-            let observer = observer.lock().unwrap();
-            if let Some(ref observer) = *observer {
+            let mut observer = observer.lock().unwrap();
+            if let Some(ref mut observer) = *observer {
                 observer.on_completed()?;
             }
         };
@@ -100,37 +100,47 @@ impl Observable<Update<super::Value>, String> for Outlet
     }
 }
 
-pub struct ADDlogServer(pub Arc<DDlogServer>);
+pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
 
 impl Observer<Update<super::Value>, String> for ADDlogServer {
-    fn on_start(&self) -> Response<()> {
-        self.0.on_start()
+    fn on_start(&mut self) -> Response<()> {
+        let s = self.0.clone();
+        let mut s = s.lock().unwrap();
+        s.on_start()
     }
 
-    fn on_commit(&self) -> Response<()> {
-        self.0.on_commit()
+    fn on_commit(&mut self) -> Response<()> {
+        let s = self.0.clone();
+        let mut s = s.lock().unwrap();
+        s.on_commit()
     }
 
-    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
-        self.0.on_updates(updates)
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
+        let s = self.0.clone();
+        let mut s = s.lock().unwrap();
+        s.on_updates(updates)
     }
 
     fn on_error(&self, error: String) {
-        self.0.on_error(error)
+        let s = self.0.clone();
+        let s = s.lock().unwrap();
+        s.on_error(error)
     }
 
-    fn on_completed(&self) -> Response<()> {
-        self.0.on_completed()
+    fn on_completed(&mut self) -> Response<()> {
+        let s = self.0.clone();
+        let mut s = s.lock().unwrap();
+        s.on_completed()
     }
 }
 
 impl Observer<Update<super::Value>, String> for DDlogServer
 {
-    fn on_start(&self) -> Response<()> {
+    fn on_start(&mut self) -> Response<()> {
         self.prog.transaction_start()
     }
 
-    fn on_commit(&self) -> Response<()> {
+    fn on_commit(&mut self) -> Response<()> {
         let changes = self.prog.transaction_commit_dump_changes()?;
         for change in changes.as_ref().iter() {
             println!{"Got {:?}", change};
@@ -139,8 +149,8 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             let outlet = outlet.clone();
             let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
-            let observer = observer.lock().unwrap();
-            if let Some(ref observer) = *observer {
+            let mut observer = observer.lock().unwrap();
+            if let Some(ref mut observer) = *observer {
                 let upds = outlet.tables.iter().flat_map(|table| {
                     changes.as_ref().get(table).map(|t| {
                         t.iter().map(move |(val, weight)| {
@@ -162,7 +172,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         Ok(())
     }
 
-    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
         self.prog.apply_valupdates(updates.map(|upd| match upd {
             Update::Insert{relid: relid, v: v} =>
                 Update::Insert{
@@ -180,7 +190,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         println!("error: {:?}", error);
     }
 
-    fn on_completed(&self) -> Response<()> {
+    fn on_completed(&mut self) -> Response<()> {
         Ok(())
     }
 }
