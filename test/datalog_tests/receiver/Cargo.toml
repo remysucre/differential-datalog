@@ -5,3 +5,4 @@ authors = ["Remy Wang <remy.sucre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+observe = {path = "../ddd_ddlog/observe"}

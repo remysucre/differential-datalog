@@ -28,7 +28,7 @@ impl Observer<usize, String> for TcpSender {
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = usize> + 'a>) -> Result<(), String> {
-        if let Some(mut stream) = self.stream.take() {
+        if let Some(ref mut stream) = self.stream {
             for upd in updates {
                 // TODO understand the difference between write methods
                 match stream.write(&[upd as u8]) {
@@ -42,6 +42,7 @@ impl Observer<usize, String> for TcpSender {
 
     fn on_commit(&mut self) -> Result<(), String> {
         // Transmit the updates
+        println!("actuallly commiting");
         if let Some(mut stream) = self.stream.take() {
             match stream.flush() {
                 Ok(_) => {},
@@ -52,8 +53,6 @@ impl Observer<usize, String> for TcpSender {
     }
 
     fn on_completed(&mut self) -> Result<(), String> {
-        // Close the connection
-        // Might need to drop self?
         Ok(())
     }
 
@@ -61,7 +60,6 @@ impl Observer<usize, String> for TcpSender {
 }
 
 fn main() -> Result<(), String> {
-
     let addr_s = "127.0.0.1:8787";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut sender  = TcpSender::new(addr);
