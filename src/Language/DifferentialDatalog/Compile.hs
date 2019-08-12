@@ -169,6 +169,8 @@ rustLibFiles specname =
         , (dir </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
         , (dir </> "observe/Cargo.toml"                 , $(embedFile "rust/template/observe/Cargo.toml"))
         , (dir </> "observe/lib.rs"                     , $(embedFile "rust/template/observe/lib.rs"))
+        , (dir </> "tcp_channel/Cargo.toml"             , $(embedFile "rust/template/tcp_channel/Cargo.toml"))
+        , (dir </> "tcp_channel/lib.rs"                 , $(embedFile "rust/template/tcp_channel/lib.rs"))
         , (dir </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))

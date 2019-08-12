@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 observe = {path = "../ddd_ddlog/observe"}
+serde_json = "1.0"
+serde = "1.0"
+tcp_channel = {path = "../ddd_ddlog/tcp_channel"}
