@@ -100,6 +100,15 @@ impl<T: Send + Serialize> Observer<T, String> for TcpSender {
         Ok(())
     }
 
+    fn on_next(&mut self, upd: T) -> Result<(), String> {
+        if let Some(ref mut stream) = self.stream {
+            let s = to_string(&upd).unwrap() + "\n";
+            stream.write(s.as_bytes())
+                .map_err(|e| format!("{:?}", e))?;
+        }
+        Ok(())
+    }
+
     // Write the updates to the TCP stream
     fn on_updates<'a>(&mut self,
                       updates: Box<dyn Iterator<Item = T> + 'a>)

@@ -115,6 +115,12 @@ impl Observer<Update<super::Value>, String> for ADDlogServer {
         s.on_commit()
     }
 
+    fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
+        let s = self.0.clone();
+        let mut s = s.lock().unwrap();
+        s.on_next(upd)
+    }
+
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
         let s = self.0.clone();
         let mut s = s.lock().unwrap();
@@ -170,6 +176,21 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             }
         };
         Ok(())
+    }
+
+    fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
+        let upd = vec![match upd {
+            Update::Insert{relid: relid, v: v} =>
+                Update::Insert{
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                    v: v},
+            Update::DeleteValue{relid: relid, v: v} =>
+                Update::DeleteValue{
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                    v: v},
+            _otherwise => panic!("Operation not allowed"),
+        }];
+        self.prog.apply_valupdates(upd.into_iter())
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {

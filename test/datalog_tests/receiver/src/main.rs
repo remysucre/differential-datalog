@@ -18,6 +18,10 @@ impl Observer<(RelId, Value, bool), String> for TestObserver {
         }
         Ok(())
     }
+    fn on_next(&mut self, item: (RelId, Value, bool)) -> Result<(), String> {
+        println!("{:?}", item);
+        Ok(())
+    }
     fn on_commit(&mut self) -> Result<(), String> {Ok(())}
     fn on_completed(&mut self) -> Result<(), String> {Ok(())}
     fn on_error(&self, _error: String) {}

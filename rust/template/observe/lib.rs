@@ -13,7 +13,13 @@ where T: Send, E:Send
 {
     fn on_start(&mut self) -> Result<(), E>;
     fn on_commit(&mut self) -> Result<(), E>;
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E>;
+    fn on_next(&mut self, item: T) -> Result<(), E>;
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
+        for upd in updates {
+            self.on_next(upd)?;
+        }
+        Ok(())
+    }
     fn on_completed(&mut self) -> Result<(), E>;
     fn on_error(&self, error: E);
 }
