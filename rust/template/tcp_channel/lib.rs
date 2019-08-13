@@ -26,7 +26,7 @@ impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
         }
     }
 
-    pub fn listen(&mut self) -> JoinHandle<()> {
+    pub fn listen(&mut self) -> JoinHandle<Result<(), String>> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let observer = self.observer.clone();
         spawn(move || {
@@ -38,11 +38,11 @@ impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
                     let v: T = from_str(&line.unwrap()).unwrap();
                     v
                 });
-
-                observer.on_start();
-                observer.on_updates(Box::new(upds));
-                observer.on_commit();
+                observer.on_start()?;
+                observer.on_updates(Box::new(upds))?;
+                observer.on_commit()?;
             }
+            Ok(())
         })
     }
 }

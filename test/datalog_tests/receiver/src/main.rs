@@ -24,12 +24,11 @@ impl Observer<usize, String> for TestObserver {
 fn main() -> io::Result<()> {
     let addr_s = "127.0.0.1:8787";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-
     let mut r = TcpReceiver::new(addr);
-    let sub = r.subscribe(Box::new(TestObserver));
-    let h1 = r.listen();
-    println!("yo");
 
+    let sub = r.subscribe(Box::new(TestObserver));
+
+    let h1 = r.listen();
     h1.join().unwrap();
 
     sub.unsubscribe();
