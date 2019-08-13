@@ -1,5 +1,3 @@
-use differential_datalog::program::{RelId, Update, Response};
-use ddd_ddlog::*;
 use observe::{Observer, Observable};
 use tcp_channel::TcpReceiver;
 
@@ -8,13 +6,13 @@ use std::net::SocketAddr;
 
 struct TestObserver;
 
-impl Observer<(RelId, Value, bool), String> for TestObserver {
+impl Observer<usize, String> for TestObserver {
     fn on_start(&mut self) -> Result<(), String> {Ok(())}
     fn on_updates<'a>(&mut self,
-                      updates: Box<dyn Iterator<Item = (RelId, Value, bool)> + 'a>)
-                      -> Response<()> {
+                      updates: Box<dyn Iterator<Item = usize> + 'a>)
+                      -> Result<(), String> {
         for upd in updates {
-            println!("{:?}", upd);
+            println!("{:?}", upd + 6);
         }
         Ok(())
     }
