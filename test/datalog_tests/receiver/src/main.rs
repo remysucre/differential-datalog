@@ -26,8 +26,15 @@ fn main() -> io::Result<()> {
     let addr = addr_s.parse::<SocketAddr>().unwrap();
 
     let mut r = TcpReceiver::new(addr);
-    r.subscribe(Box::new(TestObserver));
-    r.listen();
+    let sub = r.subscribe(Box::new(TestObserver));
+    let h1 = r.listen();
+    println!("yo");
 
+    h1.join().unwrap();
+
+    sub.unsubscribe();
+
+    let h2 = r.listen();
+    h2.join().unwrap();
     Ok(())
 }

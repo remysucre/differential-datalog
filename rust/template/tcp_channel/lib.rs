@@ -4,20 +4,21 @@ use serde::ser::Serialize;
 use serde_json::ser::to_string;
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::io::prelude::*;
-use std::io;
+use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 use observe::{Observer, Observable, Subscription};
 
 use serde::de::DeserializeOwned;
 use serde_json::from_str;
 use std::fmt::Debug;
+use std::thread::{spawn, JoinHandle};
 
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
     observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Sync>>>>
 }
 
-impl <T: DeserializeOwned + Debug + Send> TcpReceiver<T> {
+impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
     pub fn new(addr: SocketAddr) -> Self {
         TcpReceiver {
             addr: addr,
@@ -25,25 +26,24 @@ impl <T: DeserializeOwned + Debug + Send> TcpReceiver<T> {
         }
     }
 
-    pub fn listen(&mut self) {
+    pub fn listen(&mut self) -> JoinHandle<()> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let observer = self.observer.clone();
-        let mut observer = observer.lock().unwrap();
-        if let Some(mut observer) = observer.take() {
-            observer.on_start();
-            // Read everything then call on_updates
-            for stream in listener.incoming() {
-                let stream = stream.unwrap();
-                let reader = std::io::BufReader::new(stream);
+        spawn(move || {
+            let mut observer = observer.lock().unwrap();
+            if let Some(ref mut observer) = *observer {
+                let (stream, _) = listener.accept().unwrap();
+                let reader = BufReader::new(stream);
                 let upds = reader.lines().map(|line| {
                     let v: T = from_str(&line.unwrap()).unwrap();
                     v
                 });
 
+                observer.on_start();
                 observer.on_updates(Box::new(upds));
                 observer.on_commit();
             }
-        }
+        })
     }
 }
 
@@ -107,7 +107,8 @@ impl<T: Send + Serialize> Observer<T, String> for TcpSender {
         if let Some(ref mut stream) = self.stream {
             for upd in updates {
                 let s = to_string(&upd).unwrap() + "\n";
-                stream.write(s.as_bytes());
+                stream.write(s.as_bytes())
+                    .map_err(|e| format!("{:?}", e))?;
             }
         }
         Ok(())
@@ -116,7 +117,8 @@ impl<T: Send + Serialize> Observer<T, String> for TcpSender {
     // Flush the TCP stream
     fn on_commit(&mut self) -> Result<(), String> {
         if let Some(ref mut stream) = self.stream {
-            stream.flush();
+            stream.flush()
+                .map_err(|e| format!("{:?}", e))?;
         }
         Ok(())
     }
