@@ -15,10 +15,10 @@ use std::fmt::Debug;
 
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
-    observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<T, String>>>>>
 }
 
-impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
+impl <T: DeserializeOwned + Debug + 'static> TcpReceiver<T> {
     pub fn new(addr: SocketAddr) -> Self {
         TcpReceiver {
             addr: addr,
@@ -48,7 +48,7 @@ impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
 }
 
 struct TcpSubscription<T> {
-    observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<T, String>>>>>
 }
 
 impl <T> Subscription for TcpSubscription<T> {
@@ -59,8 +59,8 @@ impl <T> Subscription for TcpSubscription<T> {
     }
 }
 
-impl <T: Send + 'static> Observable<T, String> for TcpReceiver<T> {
-    fn subscribe(&mut self, observer: Box<dyn Observer<T, String> + Sync>) -> Box<dyn Subscription> {
+impl <T: 'static> Observable<T, String> for TcpReceiver<T> {
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, String>>) -> Box<dyn Subscription> {
         let obs = self.observer.clone();
         let mut obs = obs.lock().unwrap();
         *obs = Some(observer);
@@ -86,7 +86,7 @@ impl TcpSender {
     }
 }
 
-impl<T: Send + Serialize> Observer<T, String> for TcpSender {
+impl<T: Serialize> Observer<T, String> for TcpSender {
     // Start a TCP connection given an adress
     fn on_start(&mut self) -> Result<(), String> {
         if let None = &self.stream {

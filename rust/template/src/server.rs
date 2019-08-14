@@ -12,7 +12,7 @@ use std::fmt;
 pub struct UpdatesSubscription {
     // This points to the observer field in the outlet,
     // and sets it to `None` upon unsubscribing.
-    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
 }
 
 impl Subscription for UpdatesSubscription {
@@ -24,7 +24,7 @@ impl Subscription for UpdatesSubscription {
 
 pub struct DDlogServer
 {
-    prog: HDDlog,
+    prog: Option<HDDlog>,
     outlets: Vec<Arc<Mutex<Outlet>>>,
     redirect: HashMap<RelId, RelId>
 }
@@ -38,7 +38,7 @@ impl Debug for DDlogServer {
 impl DDlogServer
 {
     pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
-        DDlogServer{prog: prog, outlets: Vec::new(), redirect: redirect}
+        DDlogServer{prog: Some(prog), outlets: Vec::new(), redirect: redirect}
     }
 
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
@@ -65,8 +65,10 @@ impl DDlogServer
         self.outlets.retain(|o| !Arc::ptr_eq(&o, &outlet));
     }
 
-    pub fn shutdown(self) -> Response<()> {
-        self.prog.stop()?;
+    pub fn shutdown(mut self) -> Response<()> {
+        if let Some(prog) = self.prog.take() {
+            prog.stop()?;
+        }
         for outlet in &self.outlets {
             let outlet = outlet.lock().unwrap();
             let observer = outlet.observer.clone();
@@ -79,16 +81,32 @@ impl DDlogServer
     }
 }
 
+impl Drop for DDlogServer {
+    fn drop(&mut self) {
+        if let Some(prog) = self.prog.take() {
+            prog.stop();
+        }
+        for outlet in &self.outlets {
+            let outlet = outlet.lock().unwrap();
+            let observer = outlet.observer.clone();
+            let mut observer = observer.lock().unwrap();
+            if let Some(ref mut observer) = *observer {
+                observer.on_completed();
+            }
+        };
+    }
+}
+
 pub struct Outlet
 {
     tables: HashSet<RelId>,
-    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String> + Sync>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
 }
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
     fn subscribe(&mut self,
-                     observer: Box<dyn Observer<Update<super::Value>, String> + Sync>)
+                     observer: Box<dyn Observer<Update<super::Value>, String>>)
                      -> Box<dyn Subscription>
     {
         let obs = self.observer.clone();
@@ -143,39 +161,47 @@ impl Observer<Update<super::Value>, String> for ADDlogServer {
 impl Observer<Update<super::Value>, String> for DDlogServer
 {
     fn on_start(&mut self) -> Response<()> {
-        self.prog.transaction_start()
+        if let Some(ref mut prog) = self.prog {
+            prog.transaction_start()
+        } else {
+            Ok(())
+        }
     }
 
     fn on_commit(&mut self) -> Response<()> {
-        let changes = self.prog.transaction_commit_dump_changes()?;
-        for change in changes.as_ref().iter() {
-            println!{"Got {:?}", change};
-        }
-        for outlet in &self.outlets {
-            let outlet = outlet.clone();
-            let outlet = outlet.lock().unwrap();
-            let observer = outlet.observer.clone();
-            let mut observer = observer.lock().unwrap();
-            if let Some(ref mut observer) = *observer {
-                let upds = outlet.tables.iter().flat_map(|table| {
-                    changes.as_ref().get(table).map(|t| {
-                        t.iter().map(move |(val, weight)| {
-                            debug_assert!(*weight == 1 || *weight == -1);
-                            if *weight == 1 {
-                                Update::Insert{relid: *table, v: val.clone()}
-                            } else {
-                                Update::DeleteValue{relid: *table, v: val.clone()}
-                            }
-                        })
-                    })
-                }).flatten();
-
-                observer.on_start()?;
-                observer.on_updates(Box::new(upds))?;
-                observer.on_commit()?;
+        if let Some(ref mut prog) = self.prog {
+            let changes = prog.transaction_commit_dump_changes()?;
+            for change in changes.as_ref().iter() {
+                println!{"Got {:?}", change};
             }
-        };
-        Ok(())
+            for outlet in &self.outlets {
+                let outlet = outlet.clone();
+                let outlet = outlet.lock().unwrap();
+                let observer = outlet.observer.clone();
+                let mut observer = observer.lock().unwrap();
+                if let Some(ref mut observer) = *observer {
+                    let upds = outlet.tables.iter().flat_map(|table| {
+                        changes.as_ref().get(table).map(|t| {
+                            t.iter().map(move |(val, weight)| {
+                                debug_assert!(*weight == 1 || *weight == -1);
+                                if *weight == 1 {
+                                    Update::Insert{relid: *table, v: val.clone()}
+                                } else {
+                                    Update::DeleteValue{relid: *table, v: val.clone()}
+                                }
+                            })
+                        })
+                    }).flatten();
+
+                    observer.on_start()?;
+                    observer.on_updates(Box::new(upds))?;
+                    observer.on_commit()?;
+                }
+            };
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
@@ -190,21 +216,29 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                     v: v},
             _otherwise => panic!("Operation not allowed"),
         }];
-        self.prog.apply_valupdates(upd.into_iter())
+        if let Some(ref mut prog) = self.prog {
+            prog.apply_valupdates(upd.into_iter())
+        } else {
+            Ok(())
+        }
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
-        self.prog.apply_valupdates(updates.map(|upd| match upd {
-            Update::Insert{relid: relid, v: v} =>
-                Update::Insert{
-                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                    v: v},
-            Update::DeleteValue{relid: relid, v: v} =>
-                Update::DeleteValue{
-                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                    v: v},
-            _otherwise => panic!("Operation not allowed"),
-        }))
+        if let Some(ref prog) = self.prog {
+            prog.apply_valupdates(updates.map(|upd| match upd {
+                Update::Insert{relid: relid, v: v} =>
+                    Update::Insert{
+                        relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                        v: v},
+                Update::DeleteValue{relid: relid, v: v} =>
+                    Update::DeleteValue{
+                        relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                        v: v},
+                _otherwise => panic!("Operation not allowed"),
+            }))
+        } else {
+            Ok(())
+        }
     }
 
     fn on_error(&self, error: String) {
