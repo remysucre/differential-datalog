@@ -1,7 +1,9 @@
 /* First DDlog example */
 
 input relation Left[bool]
-output relation Middle[bool]
+output relation Up[bool]
+output relation Down[bool]
 
 // Rule
-Middle[b] :- Left[b].
+Up[b] :- Left[b].
+Down[not b] :- Left[b].

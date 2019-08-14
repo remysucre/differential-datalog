@@ -106,7 +106,7 @@ pub struct Outlet
 impl Observable<Update<super::Value>, String> for Outlet
 {
     fn subscribe(&mut self,
-                     observer: Box<dyn Observer<Update<super::Value>, String>>)
+                     observer: Box<dyn Observer<Update<super::Value>, String> + Send>)
                      -> Box<dyn Subscription>
     {
         let obs = self.observer.clone();

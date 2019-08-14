@@ -14,32 +14,44 @@ use std::sync::{Arc, Mutex};
 fn main() -> Result<(), String> {
     let addr_s = "127.0.0.1:8787";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let mut r = TcpReceiver::new(addr);
+    let mut r1 = TcpReceiver::new(addr);
+
+    let addr_s = "127.0.0.1:8000";
+    let addr = addr_s.parse::<SocketAddr>().unwrap();
+    let mut r2 = TcpReceiver::new(addr);
 
     // Construct right server, redirect Middle table
     let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});
     let mut redirect2 = HashMap::new();
-    redirect2.insert(lr_left_Middle as usize, lr_right_Middle as usize);
+    redirect2.insert(lr_left_Up as usize, lr_right_Up as usize);
+    redirect2.insert(lr_left_Down as usize, lr_right_Down as usize);
     let s2 = server::DDlogServer::new(prog2, redirect2);
 
     // Right server subscribes to the stream
     let s2 = Arc::new(Mutex::new(s2));
-    let sub = {
+    let sub1 = {
         let s2_a = server::ADDlogServer(s2.clone());
         let adapter = Adapter{observer: Box::new(s2_a)};
-        r.subscribe(Box::new(adapter))
+        r1.subscribe(Box::new(adapter))
+    };
+    let sub2 = {
+        let s2_a = server::ADDlogServer(s2.clone());
+        let adapter = Adapter{observer: Box::new(s2_a)};
+        r2.subscribe(Box::new(adapter))
     };
 
-    r.listen()?;
-    sub.unsubscribe();
-    r.listen()?;
+    let h1 = r1.listen();
+    let h2 = r2.listen();
+    //sub.unsubscribe();
 
+    h1.join();
+    h2.join();
     Ok(())
 }
 
 
 struct Adapter {
-    observer: Box<dyn Observer<Update<Value>, String>>
+    observer: Box<dyn Observer<Update<Value>, String> + Send>
 }
 
 struct AdapterSub;
@@ -51,7 +63,7 @@ impl Subscription for AdapterSub {
 
 impl Observable<Update<Value>, String>  for Adapter {
     fn subscribe(&mut self,
-                 observer: Box<dyn Observer<Update<Value>, String>>) -> Box<dyn Subscription>{
+                 observer: Box<dyn Observer<Update<Value>, String> + Send>) -> Box<dyn Subscription>{
         self.observer = observer;
         Box::new(AdapterSub)
     }

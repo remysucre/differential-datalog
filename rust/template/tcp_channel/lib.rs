@@ -11,14 +11,14 @@ use observe::{Observer, Observable, Subscription};
 use serde::de::DeserializeOwned;
 use serde_json::from_str;
 use std::fmt::Debug;
-//use std::thread::{spawn, JoinHandle};
+use std::thread::{spawn, JoinHandle};
 
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
-    observer: Arc<Mutex<Option<Box<dyn Observer<T, String>>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>
 }
 
-impl <T: DeserializeOwned + Debug + 'static> TcpReceiver<T> {
+impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
     pub fn new(addr: SocketAddr) -> Self {
         TcpReceiver {
             addr: addr,
@@ -26,29 +26,29 @@ impl <T: DeserializeOwned + Debug + 'static> TcpReceiver<T> {
         }
     }
 
-    pub fn listen(&mut self) -> Result<(), String> {
+    pub fn listen(&mut self) -> JoinHandle<Result<(), String>> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let observer = self.observer.clone();
-        // spawn(move || {
-        let mut observer = observer.lock().unwrap();
-        if let Some(ref mut observer) = *observer {
-            let (stream, _) = listener.accept().unwrap();
-            let reader = BufReader::new(stream);
-            let upds = reader.lines().map(|line| {
-                let v: T = from_str(&line.unwrap()).unwrap();
-                v
-            });
-            observer.on_start()?;
-            observer.on_updates(Box::new(upds))?;
-            observer.on_commit()?;
-        }
-        Ok(())
-        // })
+        spawn(move || {
+            let mut observer = observer.lock().unwrap();
+            if let Some(ref mut observer) = *observer {
+                let (stream, _) = listener.accept().unwrap();
+                let reader = BufReader::new(stream);
+                let upds = reader.lines().map(|line| {
+                    let v: T = from_str(&line.unwrap()).unwrap();
+                    v
+                });
+                observer.on_start()?;
+                observer.on_updates(Box::new(upds))?;
+                observer.on_commit()?;
+            }
+            Ok(())
+        })
     }
 }
 
 struct TcpSubscription<T> {
-    observer: Arc<Mutex<Option<Box<dyn Observer<T, String>>>>>
+    observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>
 }
 
 impl <T> Subscription for TcpSubscription<T> {
@@ -59,8 +59,8 @@ impl <T> Subscription for TcpSubscription<T> {
     }
 }
 
-impl <T: 'static> Observable<T, String> for TcpReceiver<T> {
-    fn subscribe(&mut self, observer: Box<dyn Observer<T, String>>) -> Box<dyn Subscription> {
+impl <T: 'static+ Send> Observable<T, String> for TcpReceiver<T> {
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, String> + Send>) -> Box<dyn Subscription> {
         let obs = self.observer.clone();
         let mut obs = obs.lock().unwrap();
         *obs = Some(observer);
@@ -86,7 +86,7 @@ impl TcpSender {
     }
 }
 
-impl<T: Serialize> Observer<T, String> for TcpSender {
+impl<T: Serialize + Send> Observer<T, String> for TcpSender {
     // Start a TCP connection given an adress
     fn on_start(&mut self) -> Result<(), String> {
         if let None = &self.stream {

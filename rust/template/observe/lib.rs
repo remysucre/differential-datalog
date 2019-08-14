@@ -1,13 +1,15 @@
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
 pub trait Observable<T, E>
+where T:Send, E: Send
 {
-    fn subscribe(&mut self, observer: Box<dyn Observer<T, E>>) -> Box<dyn Subscription>;
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, E> + Send>) -> Box<dyn Subscription>;
 }
 
 // The channel is an observer of changes from
 // a producer
-pub trait Observer<T, E>
+pub trait Observer<T, E>: Send
+where T:Send, E: Send
 {
     fn on_start(&mut self) -> Result<(), E>;
     fn on_commit(&mut self) -> Result<(), E>;
