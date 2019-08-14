@@ -11,7 +11,7 @@ use observe::{Observer, Observable, Subscription};
 use serde::de::DeserializeOwned;
 use serde_json::from_str;
 use std::fmt::Debug;
-use std::thread::{spawn, JoinHandle};
+//use std::thread::{spawn, JoinHandle};
 
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
@@ -26,24 +26,24 @@ impl <T: DeserializeOwned + Debug + Send + 'static> TcpReceiver<T> {
         }
     }
 
-    pub fn listen(&mut self) -> JoinHandle<Result<(), String>> {
+    pub fn listen(&mut self) -> Result<(), String> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let observer = self.observer.clone();
-        spawn(move || {
-            let mut observer = observer.lock().unwrap();
-            if let Some(ref mut observer) = *observer {
-                let (stream, _) = listener.accept().unwrap();
-                let reader = BufReader::new(stream);
-                let upds = reader.lines().map(|line| {
-                    let v: T = from_str(&line.unwrap()).unwrap();
-                    v
-                });
-                observer.on_start()?;
-                observer.on_updates(Box::new(upds))?;
-                observer.on_commit()?;
-            }
-            Ok(())
-        })
+        // spawn(move || {
+        let mut observer = observer.lock().unwrap();
+        if let Some(ref mut observer) = *observer {
+            let (stream, _) = listener.accept().unwrap();
+            let reader = BufReader::new(stream);
+            let upds = reader.lines().map(|line| {
+                let v: T = from_str(&line.unwrap()).unwrap();
+                v
+            });
+            observer.on_start()?;
+            observer.on_updates(Box::new(upds))?;
+            observer.on_commit()?;
+        }
+        Ok(())
+        // })
     }
 }
 
