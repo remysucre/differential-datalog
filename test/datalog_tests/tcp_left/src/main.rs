@@ -29,13 +29,13 @@ fn main() -> Result<(), String> {
     let outlet_down = s1.add_stream(tdown);
 
     // First TCP channel
-    let addr_s = "127.0.0.1:8787";
+    let addr_s = "127.0.0.1:8001";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let chan1 = TcpSender::new(addr);
     let adapter1 = Adapter{observer: Box::new(chan1)};
 
     // Second TCP channel
-    let addr_s = "127.0.0.1:8000";
+    let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let chan2 = TcpSender::new(addr);
     let adapter2 = Adapter{observer: Box::new(chan2)};
@@ -55,7 +55,7 @@ fn main() -> Result<(), String> {
     };
 
     // Insert `true` to Left in left server
-    let rec = Record::Bool(true);
+    let rec = Record::Bool(false);
     let table_id = RelIdentifier::RelId(lr_left_Left as usize);
     let updates = &[UpdCmd::Insert(table_id, rec)];
 

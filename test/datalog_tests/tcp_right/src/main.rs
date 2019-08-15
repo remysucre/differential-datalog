@@ -12,19 +12,19 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
 fn main() -> Result<(), String> {
-    let addr_s = "127.0.0.1:8787";
+    let addr_s = "127.0.0.1:8010";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut r1 = TcpReceiver::new(addr);
 
-    let addr_s = "127.0.0.1:8000";
+    let addr_s = "127.0.0.1:8020";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut r2 = TcpReceiver::new(addr);
 
     // Construct right server, redirect Middle table
     let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});
     let mut redirect2 = HashMap::new();
-    redirect2.insert(lr_left_Up as usize, lr_right_Up as usize);
-    redirect2.insert(lr_left_Down as usize, lr_right_Down as usize);
+    redirect2.insert(lr_up_Right as usize, lr_right_Up as usize);
+    redirect2.insert(lr_down_Right as usize, lr_right_Down as usize);
     let s2 = server::DDlogServer::new(prog2, redirect2);
 
     // Right server subscribes to the stream

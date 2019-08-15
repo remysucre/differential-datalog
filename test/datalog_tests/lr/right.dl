@@ -5,4 +5,4 @@ input relation Down[bool]
 output relation Right[bool]
 
 // Rule
-Right[b] :- Up[b], not Down[b].
+Right[b] :- Up[b], Down[b].

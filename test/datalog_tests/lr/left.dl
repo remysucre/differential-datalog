@@ -6,4 +6,4 @@ output relation Down[bool]
 
 // Rule
 Up[b] :- Left[b].
-Down[not b] :- Left[b].
+Down[b] :- Left[b].
