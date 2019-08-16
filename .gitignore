@@ -26,7 +26,6 @@ test/datalog_tests/*.err
 test/datalog_tests/*.dump
 test/datalog_tests/*.c
 test/datalog_tests/*_ddlog
-test/datalog_tests/lr/*_ddlog
 test/ovn
 *.dump
 # These files are generated
