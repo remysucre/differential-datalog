@@ -8,6 +8,8 @@ import lr.down as d
 // u.Left :- l.Up
 // d.Left :- l.Down
 
-//         up
-// left -<    >- right
+//        up
+//        |
+// left -< >- right
+//        |
 //        down
