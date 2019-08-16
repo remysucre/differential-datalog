@@ -63,8 +63,8 @@ fn main() -> Result<(), String> {
     s1.on_start()?;
     s1.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())))?;
     s1.on_commit()?;
-    s1.on_completed()
-    //s1.shutdown()
+    s1.on_completed()?;
+    s1.shutdown()
 }
 
 struct Adapter {

@@ -2,6 +2,7 @@
 
 extern crate fnv;
 extern crate differential_dataflow;
+extern crate observe;
 extern crate timely;
 extern crate num_traits;
 
@@ -15,7 +16,6 @@ extern crate twox_hash;
 
 #[macro_use]
 extern crate differential_datalog;
-extern crate observe;
 
 #[macro_use]
 extern crate abomonation;

@@ -51,6 +51,8 @@ fn main() -> Result<(), String> {
 
     let handle = receiver.listen();
     handle.join();
+
+    s.lock().unwrap().shutdown()?;
     Ok(())
 }
 

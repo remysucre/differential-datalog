@@ -21,7 +21,7 @@ fn main() -> Result<(), String> {
     redirect2.insert(lr_left_Up as usize, lr_right_Up as usize);
     let s2 = server::DDlogServer::new(prog2, redirect2);
 
-    // Stream Middle table from left server
+    // Stream table from left server
     let mut tables = HashSet::new();
     tables.insert(lr_left_Up as usize);
     let outlet = s1.add_stream(tables);
@@ -46,6 +46,7 @@ fn main() -> Result<(), String> {
     s1.on_commit()?;
     s1.on_completed()?;
 
+    // Test unsubscribe
     sub.unsubscribe();
 
     let rec2 = Record::Bool(true);
@@ -59,6 +60,6 @@ fn main() -> Result<(), String> {
 
     s1.remove_stream(outlet);
     s1.shutdown()?;
-    // TODO how to shutdown s2? Maybe at Drop?
+    s2.lock().unwrap().shutdown()?;
     Ok(())
 }

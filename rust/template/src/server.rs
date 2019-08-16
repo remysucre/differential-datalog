@@ -42,17 +42,6 @@ impl DDlogServer
     }
 
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
-        //let db = self.prog.db.clone();
-        //let db = db.lock().unwrap();
-        //if let Some(ref db) = *db {
-        //    for relid in &tables {
-        //        assert!(db.as_ref().contains_key(&relid),
-        //        "Attempting to listen to non-existent table")
-        //    }
-        //} else {
-        //    assert!(tables.is_empty(),
-        //            "Attempting to listen to an empty DB")
-        //}
         let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
             observer : Arc::new(Mutex::new(None))
@@ -65,7 +54,7 @@ impl DDlogServer
         self.outlets.retain(|o| !Arc::ptr_eq(&o, &outlet));
     }
 
-    pub fn shutdown(mut self) -> Response<()> {
+    pub fn shutdown(&mut self) -> Response<()> {
         if let Some(prog) = self.prog.take() {
             prog.stop()?;
         }
@@ -78,22 +67,6 @@ impl DDlogServer
             }
         };
         Ok(())
-    }
-}
-
-impl Drop for DDlogServer {
-    fn drop(&mut self) {
-        if let Some(prog) = self.prog.take() {
-            prog.stop();
-        }
-        for outlet in &self.outlets {
-            let outlet = outlet.lock().unwrap();
-            let observer = outlet.observer.clone();
-            let mut observer = observer.lock().unwrap();
-            if let Some(ref mut observer) = *observer {
-                observer.on_completed();
-            }
-        };
     }
 }
 

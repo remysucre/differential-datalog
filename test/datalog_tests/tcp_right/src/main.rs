@@ -46,6 +46,8 @@ fn main() -> Result<(), String> {
 
     h1.join();
     h2.join();
+
+    s2.lock().unwrap().shutdown()?;
     Ok(())
 }
 

@@ -1,17 +1,18 @@
 extern crate serde_json;
 
+use observe::{Observer, Observable, Subscription};
+
 use serde::ser::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::from_str;
 use serde_json::ser::to_string;
+
 use std::net::{TcpStream, TcpListener, SocketAddr};
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
-use observe::{Observer, Observable, Subscription};
-
-use serde::de::DeserializeOwned;
-use serde_json::from_str;
-use std::fmt::Debug;
 use std::thread::{spawn, JoinHandle};
+use std::fmt::Debug;
 
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
@@ -87,7 +88,6 @@ impl TcpSender {
 }
 
 impl<T: Serialize + Send> Observer<T, String> for TcpSender {
-    // Start a TCP connection given an adress
     fn on_start(&mut self) -> Result<(), String> {
         if let None = &self.stream {
             self.stream = Some(
@@ -134,7 +134,7 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
 
     // Close the TCP connection
     fn on_completed(&mut self) -> Result<(), String> {
-        // Move the TcpStream to close the connection
+        // Move and drop the TcpStream to close the connection
         self.stream.take();
         Ok(())
     }
