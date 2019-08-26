@@ -1,0 +1,4 @@
+typedef VIP  = bit<32>
+typedef IP   = bit<32>
+typedef UUID = bit<128>
+

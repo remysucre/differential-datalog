@@ -1,0 +1,8 @@
+digraph {
+    0 [label=FwdTable];
+    1 [label=HostId];
+    2 [label=VM];
+    3 [label=VM_];
+    1 -> 2;
+    3 -> 2;
+}
