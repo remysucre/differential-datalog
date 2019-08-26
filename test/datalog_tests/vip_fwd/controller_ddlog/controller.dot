@@ -1,7 +1,0 @@
-digraph {
-    0 [label=FwdTable];
-    1 [label=Host];
-    2 [label=VM];
-    1 -> 0;
-    2 -> 0;
-}
