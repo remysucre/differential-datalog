@@ -39,14 +39,12 @@ fn main() -> Result<(), String> {
     let s = Arc::new(Mutex::new(s));
     let sub1 = {
         let s_a = server::ADDlogServer(s.clone());
-        let adapter = AdapterR{observer: Box::new(s_a)};
-        receiver.subscribe(Box::new(adapter))
+        receiver.subscribe(Box::new(s_a))
     };
 
     // Downstream TCP channel subscribes to the server
     let _sub2 = {
-        let adapter = AdapterL{observer: Box::new(sender)};
-        outlet.subscribe(Box::new(adapter))
+        outlet.subscribe(Box::new(sender))
     };
 
     // Listen for updates on the upstream channel
@@ -58,95 +56,3 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-struct AdapterR {
-    observer: Box<dyn Observer<Update<Value>, String> + Send>
-}
-
-struct AdapterSub;
-
-impl Subscription for AdapterSub {
-    fn unsubscribe(self: Box<Self>) {
-    }
-}
-
-impl Observable<Update<Value>, String>  for AdapterR {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<Update<Value>, String> + Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<(usize, Value, bool), String> for AdapterR {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: (usize, Value, bool)) -> Result<(), String> {
-        let (relid, v, b) = item;
-        let item = if b {
-            Update::Insert{relid, v}
-        } else {
-            Update::DeleteValue{relid, v}
-        };
-        self.observer.on_next(item)
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = (usize, Value, bool)> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new(updates.map(|(relid, v, b)| {
-            if b {
-                Update::Insert{relid, v}
-            } else {
-                Update::DeleteValue{relid, v}
-            }
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
-}
-
-struct AdapterL {
-    observer: Box<dyn Observer<(usize, Value, bool), String>>
-}
-
-impl Observable<(usize, Value, bool), String> for AdapterL {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<(usize, Value, bool), String>+ Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<Update<Value>, String> for AdapterL {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: Update<Value>) -> Result<(), String> {
-        self.observer.on_next(match item {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new( updates.map(|upd| match upd {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
-}

@@ -1,0 +1,11 @@
+import vip_fwd.types
+
+input relation VM_(vip: VIP)
+input relation FwdTable_(vip: VIP, ip: IP)
+input relation HostId(id: UUID)
+
+output relation VM(vip: VIP, host: UUID) 
+output relation FwdTable(vip: VIP, ip: IP)
+
+VM(vip, host) :- VM_(vip), HostId(host).
+FwdTable(vip: VIP, ip: IP) :- FwdTable_(vip: VIP, ip: IP).

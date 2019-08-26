@@ -47,16 +47,12 @@ fn main() -> Result<(), String> {
     let s = Arc::new(Mutex::new(s));
     let _sub1 = {
         let s_a = server::ADDlogServer(s.clone());
-        let adapter = AdapterR{observer: Box::new(s_a)};
-        receiver.subscribe(Box::new(adapter))
+        receiver.subscribe(Box::new(s_a))
     };
 
     // Downstream TCP channel subscribes to the stream
     let sub2 = {
-        //let stream = outlet.clone();
-        //let mut stream = outlet.stream.lock().unwrap();
-        let adapter = AdapterL{observer: Box::new(a_sender)};
-        outlet.subscribe(Box::new(adapter))
+        outlet.subscribe(Box::new(a_sender))
     };
 
     // Insert `true` to Left in left server
@@ -84,103 +80,4 @@ fn main() -> Result<(), String> {
 
     let mut s = s.lock().unwrap();
     s.shutdown()
-}
-// We need the following Adapters to transform observables until
-// `Observable::map` is implemented. `map` is challenging because
-// it is a generic method, but we want to have trait objects of
-// `Observable`. Generics are not object safe. We can take notes
-// of the Rust Iterator implementation to address the dilemma.
-
-struct AdapterR {
-    observer: Box<dyn Observer<Update<Value>, String> + Send>
-}
-
-struct AdapterSub;
-
-impl Subscription for AdapterSub {
-    fn unsubscribe(self: Box<Self>) {
-    }
-}
-
-impl Observable<Update<Value>, String>  for AdapterR {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<Update<Value>, String> + Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<(usize, Value, bool), String> for AdapterR {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()?;
-        Ok(())
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: (usize, Value, bool)) -> Result<(), String> {
-        let (relid, v, b) = item;
-        let item = if b {
-            Update::Insert{relid, v}
-        } else {
-            Update::DeleteValue{relid, v}
-        };
-        self.observer.on_next(item)
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = (usize, Value, bool)> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new(updates.map(|(relid, v, b)| {
-            if b {
-                Update::Insert{relid, v}
-            } else {
-                Update::DeleteValue{relid, v}
-            }
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
-}
-
-struct AdapterL {
-    observer: Box<dyn Observer<(usize, Value, bool), String>>
-}
-
-impl Observable<(usize, Value, bool), String> for AdapterL {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<(usize, Value, bool), String>+ Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<Update<Value>, String> for AdapterL {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: Update<Value>) -> Result<(), String> {
-        self.observer.on_next(match item {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new( updates.map(|upd| match upd {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
 }

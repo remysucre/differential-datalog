@@ -23,14 +23,12 @@ fn main() -> Result<(), String> {
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut chan1 = TcpSender::new(addr);
     chan1.connect();
-    let adapter1 = Adapter{observer: Box::new(chan1)};
 
     // Second TCP channel
     let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut chan2 = TcpSender::new(addr);
     chan2.connect();
-    let adapter2 = Adapter{observer: Box::new(chan2)};
 
     // Stream Up table from left server
     let mut tup = HashSet::new();
@@ -39,7 +37,7 @@ fn main() -> Result<(), String> {
 
     // First TcpSender subscribes to the stream
     let _sub1 = {
-        outlet_up.subscribe(Box::new(adapter1))
+        outlet_up.subscribe(Box::new(chan1))
     };
 
     // Stream Down table from left server
@@ -49,7 +47,7 @@ fn main() -> Result<(), String> {
 
     // Second TcpSender subscribes to the stream
     let _sub2 = {
-        outlet_down.subscribe(Box::new(adapter2))
+        outlet_down.subscribe(Box::new(chan2))
     };
 
     // Insert `true` to Left in left server
@@ -64,58 +62,4 @@ fn main() -> Result<(), String> {
     s1.on_completed()?;
 
     s1.shutdown()
-}
-
-// We need the following Adapters to transform observables until
-// `Observable::map` is implemented. `map` is challenging because
-// it is a generic method, but we want to have trait objects of
-// `Observable`. Generics are not object safe. We can take notes
-// of the Rust Iterator implementation to address the dilemma.
-
-struct Adapter {
-    observer: Box<dyn Observer<(usize, Value, bool), String>>
-}
-
-struct AdapterSub;
-
-impl Subscription for AdapterSub {
-    fn unsubscribe(self: Box<Self>) {
-    }
-}
-
-impl Observable<(usize, Value, bool), String> for Adapter {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<(usize, Value, bool), String>+ Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<Update<Value>, String> for Adapter {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: Update<Value>) -> Result<(), String> {
-        self.observer.on_next(match item {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new( updates.map(|upd| match upd {
-            Update::Insert{relid, v} => (relid, v, true),
-            Update::DeleteValue{relid, v} => (relid, v, false),
-            _ => panic!("Only insert and deletes are permitted")
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
 }

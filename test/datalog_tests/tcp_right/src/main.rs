@@ -34,13 +34,11 @@ fn main() -> Result<(), String> {
     let s2 = Arc::new(Mutex::new(s2));
     let sub1 = {
         let s2_a = server::ADDlogServer(s2.clone());
-        let adapter = Adapter{observer: Box::new(s2_a)};
-        r1.subscribe(Box::new(adapter))
+        r1.subscribe(Box::new(s2_a))
     };
     let sub2 = {
         let s2_a = server::ADDlogServer(s2.clone());
-        let adapter = Adapter{observer: Box::new(s2_a)};
-        r2.subscribe(Box::new(adapter))
+        r2.subscribe(Box::new(s2_a))
     };
 
     // Listen for updates
@@ -54,60 +52,3 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-// We need the following Adapters to transform observables until
-// `Observable::map` is implemented. `map` is challenging because
-// it is a generic method, but we want to have trait objects of
-// `Observable`. Generics are not object safe. We can take notes
-// of the Rust Iterator implementation to address the dilemma.
-
-struct Adapter {
-    observer: Box<dyn Observer<Update<Value>, String> + Send>
-}
-
-struct AdapterSub;
-
-impl Subscription for AdapterSub {
-    fn unsubscribe(self: Box<Self>) {
-    }
-}
-
-impl Observable<Update<Value>, String>  for Adapter {
-    fn subscribe(&mut self,
-                 observer: Box<dyn Observer<Update<Value>, String> + Send>) -> Box<dyn Subscription>{
-        self.observer = observer;
-        Box::new(AdapterSub)
-    }
-}
-
-impl Observer<(usize, Value, bool), String> for Adapter {
-    fn on_start(&mut self) -> Result<(), String> {
-        self.observer.on_start()
-    }
-    fn on_commit(&mut self) -> Result<(), String> {
-        self.observer.on_commit()
-    }
-    fn on_next(&mut self, item: (usize, Value, bool)) -> Result<(), String> {
-        let (relid, v, b) = item;
-        let item = if b {
-            Update::Insert{relid, v}
-        } else {
-            Update::DeleteValue{relid, v}
-        };
-        self.observer.on_next(item)
-    }
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = (usize, Value, bool)> + 'a>) -> Result<(), String> {
-        self.observer.on_updates(Box::new(updates.map(|(relid, v, b)| {
-            if b {
-                Update::Insert{relid, v}
-            } else {
-                Update::DeleteValue{relid, v}
-            }
-        })))
-    }
-    fn on_completed(&mut self) -> Result<(), String> {
-        self.observer.on_completed()
-    }
-    fn on_error(&self, error: String) {
-        self.observer.on_error(error)
-    }
-}
