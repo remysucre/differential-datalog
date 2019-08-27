@@ -13,6 +13,10 @@ use std::sync::{Arc, Mutex};
 use std::borrow::Cow;
 
 fn main() {
+
+    println!("fwd table is {:?}", vip_fwd_controller_FwdTable as usize);
+    println!("vm table is {:?}", vip_fwd_controller_VM_ as usize);
+
     // Construct server
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
     let redirect: HashMap<_, _> =
@@ -50,18 +54,18 @@ fn main() {
     rec_con_2.join();
 
     // Stream table from left server
-    let mut tup = HashSet::new();
-    tup.insert(vip_fwd_controller_FwdTable as usize);
-    let mut outlet = s.add_stream(tup);
+    let t_out: HashSet<_> = vec![vip_fwd_controller_FwdTable as usize]
+        .into_iter().collect();
+    let mut outlet = s.add_stream(t_out);
 
-    // Server1 subscribes to the upstream TCP channel
+    // Server subscribes to the upstream TCP channel
     let s_a = Arc::new(Mutex::new(s));
     let _sub = {
         let s_a = server::ADDlogServer(s_a.clone());
         receiver1.subscribe(Box::new(s_a))
     };
 
-    // Server2 subscribes to the upstream TCP channel
+    // Server subscribes to the upstream TCP channel
     let _sub = {
         let s_a = server::ADDlogServer(s_a.clone());
         receiver2.subscribe(Box::new(s_a))
@@ -77,15 +81,16 @@ fn main() {
     };
 
     // Insert `true` to Left in left server
-    let rec = Record::NamedStruct(
-        Cow::from("vip_fwd.controller.Host"),
-        vec![(Cow::from("id"), Record::Bool(true)),
-             (Cow::from("ip"), Record::Bool(true))]);
+    //let rec = Record::NamedStruct(
+    //    Cow::from("vip_fwd.controller.Host"),
+    //    vec![(Cow::from("id"), Record::Bool(true)),
+    //         (Cow::from("ip"), Record::Bool(true))]);
+    let rec = Record::Tuple(vec![
+        Record::Bool(true),
+        Record::Bool(true)
+    ]);
     let table_id = RelIdentifier::RelId(vip_fwd_controller_Host as usize);
     let updates = &[UpdCmd::Insert(table_id, rec)];
-
-    let handle1 = receiver1.listen();
-    let handle2 = receiver2.listen();
 
     // Execute and transmit the update
     {
@@ -96,11 +101,13 @@ fn main() {
         s.on_commit();
     }
 
+    let handle1 = receiver1.listen();
+    let handle2 = receiver2.listen();
+
     //sender.lock().unwrap().disconnect();
     handle1.join();
     handle2.join();
 
-    //receiver.disconnect();
 
     let mut s = s_a.lock().unwrap();
     s.shutdown();

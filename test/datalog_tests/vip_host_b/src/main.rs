@@ -54,14 +54,16 @@ fn main() {
     };
 
     // Insert `true` to Left in left server
-    let host_val = Record::NamedStruct(
-        Cow::from("vip_fwd.host.HostId"),
-        vec![(Cow::from("id"), Record::Bool(true))]);
+    //let host_val = Record::NamedStruct(
+    //    Cow::from("vip_fwd.host.HostId"),
+    //    vec![(Cow::from("id"), Record::Bool(true))]);
+    let host_val = Record::Bool(true);
     let host_id = RelIdentifier::RelId(vip_fwd_host_HostId as usize);
 
-    let vm_val = Record::NamedStruct(
-        Cow::from("vip_fwd.host.VM_"),
-        vec![(Cow::from("vip"), Record::Bool(true))]);
+    //let vm_val = Record::NamedStruct(
+    //    Cow::from("vip_fwd.host.VM_"),
+    //    vec![(Cow::from("vip"), Record::Bool(true))]);
+    let vm_val = Record::Bool(true);
     let vm_id = RelIdentifier::RelId(vip_fwd_host_VM_ as usize);
 
     let updates = &[UpdCmd::Insert(host_id, host_val),
