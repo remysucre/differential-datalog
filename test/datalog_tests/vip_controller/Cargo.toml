@@ -1,0 +1,13 @@
+[package]
+name = "vip_controller"
+version = "0.1.0"
+authors = ["Remy Wang <remy.sucre@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+observe = {path = "../vip_fwd_ddlog/observe"}
+serde_json = "1.0"
+serde = "1.0"
+tcp_channel = {path = "../vip_fwd_ddlog/tcp_channel"}
+vip_fwd = {path = "../vip_fwd_ddlog"}
+differential_datalog = {path = "../vip_fwd_ddlog/differential_datalog"}
