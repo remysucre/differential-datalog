@@ -56,7 +56,13 @@ fn main() {
     // Stream table from left server
     let t_out: HashSet<_> = vec![vip_fwd_controller_FwdTable as usize]
         .into_iter().collect();
-    let mut outlet = s.add_stream(t_out);
+    let mut outlet1 = s.add_stream(t_out);
+
+    // Stream table from left server
+    let t_out: HashSet<_> = vec![vip_fwd_controller_FwdTable as usize]
+        .into_iter().collect();
+    let mut outlet2 = s.add_stream(t_out);
+
 
     // Server subscribes to the upstream TCP channel
     let s_a = Arc::new(Mutex::new(s));
@@ -73,11 +79,11 @@ fn main() {
 
     // Downstream TCP channel subscribes to the stream
     let _sub = {
-        outlet.subscribe(Box::new(sender1))
+        outlet1.subscribe(Box::new(sender1))
     };
 
     let _sub = {
-        outlet.subscribe(Box::new(sender2))
+        outlet2.subscribe(Box::new(sender2))
     };
 
     // Insert `true` to Left in left server
@@ -85,12 +91,17 @@ fn main() {
     //    Cow::from("vip_fwd.controller.Host"),
     //    vec![(Cow::from("id"), Record::Bool(true)),
     //         (Cow::from("ip"), Record::Bool(true))]);
-    let rec = Record::Tuple(vec![
-        Record::Bool(true),
+    let rec1 = Record::Tuple(vec![
+        Record::Bool(false),
         Record::Bool(true)
     ]);
+    let rec2 = Record::Tuple(vec![
+        Record::Bool(true),
+        Record::Bool(false)
+    ]);
     let table_id = RelIdentifier::RelId(vip_fwd_controller_Host as usize);
-    let updates = &[UpdCmd::Insert(table_id, rec)];
+    let updates = &[UpdCmd::Insert(table_id.clone(), rec1), 
+                    UpdCmd::Insert(table_id, rec2)];
 
     // Execute and transmit the update
     {

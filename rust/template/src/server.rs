@@ -157,7 +157,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
             for outlet in &self.outlets {
                 let mut observer = outlet.observer.lock().unwrap();
                 if let Some(ref mut observer) = *observer {
-                    let upds = outlet.tables.iter().flat_map(|table| {
+                    let mut upds = outlet.tables.iter().flat_map(|table| {
                         changes.as_ref().get(table).map(|t| {
                             t.iter().map(move |(val, weight)| {
                                 debug_assert!(*weight == 1 || *weight == -1);
@@ -168,10 +168,12 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                                 }
                             })
                         })
-                    }).flatten();
+                    }).flatten().peekable();
 
-                    observer.on_updates(Box::new(upds))?;
-                    observer.on_commit()?;
+                    if upds.peek().is_some() {
+                        observer.on_updates(Box::new(upds))?;
+                        observer.on_commit()?;
+                    }
                 }
             };
             Ok(())
