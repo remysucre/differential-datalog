@@ -14,9 +14,6 @@ use std::borrow::Cow;
 
 fn main() {
 
-    println!("fwd table is {:?}", vip_fwd_controller_FwdTable as usize);
-    println!("vm table is {:?}", vip_fwd_controller_VM_ as usize);
-
     // Construct server
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
     let redirect: HashMap<_, _> =
@@ -116,9 +113,9 @@ fn main() {
     let handle2 = receiver2.listen();
 
     //sender.lock().unwrap().disconnect();
+
     handle1.join();
     handle2.join();
-
 
     let mut s = s_a.lock().unwrap();
     s.shutdown();

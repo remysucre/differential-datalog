@@ -69,13 +69,9 @@ impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
                                 let v: T = from_str(&line).unwrap();
                                 v
                             }).peekable();
-                        println!("breaking");
                         if upds.peek().is_none() {break};
-                        println!("listen starting");
                         observer.on_start()?;
-                        println!("listen updating");
                         observer.on_updates(Box::new(upds))?;
-                        println!("listen commiting");
                         observer.on_commit()?;
                     }
                 }
@@ -218,9 +214,7 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
                       updates: Box<dyn Iterator<Item = T> + 'a>)
                       -> Result<(), String> {
         if let Some(ref mut stream) = self.stream {
-            println!("updates:");
             for upd in updates {
-                println!("send upd");
                 let s = to_string(&upd).unwrap() + "\n";
                 stream.write(s.as_bytes())
                     .map_err(|e| format!("{:?}", e))?;
@@ -233,7 +227,6 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
     // TODO writing "commit" to stream feels like a HACK
     fn on_commit(&mut self) -> Result<(), String> {
         if let Some(ref mut stream) = self.stream {
-            println!("tcp sender commiting");
             stream.write_all(b"commit\n")
                 .map_err(|e| format!("{:?}", e))?;
             stream.flush()
