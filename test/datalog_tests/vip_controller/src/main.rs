@@ -84,17 +84,13 @@ fn main() {
     };
 
     // Insert `true` to Left in left server
-    //let rec = Record::NamedStruct(
-    //    Cow::from("vip_fwd.controller.Host"),
-    //    vec![(Cow::from("id"), Record::Bool(true)),
-    //         (Cow::from("ip"), Record::Bool(true))]);
     let rec1 = Record::Tuple(vec![
-        Record::Bool(false),
-        Record::Bool(true)
+        Record::String("id1".to_string()),
+        Record::String("ip1".to_string())
     ]);
     let rec2 = Record::Tuple(vec![
-        Record::Bool(true),
-        Record::Bool(false)
+        Record::String("id2".to_string()),
+        Record::String("ip2".to_string())
     ]);
     let table_id = RelIdentifier::RelId(vip_fwd_controller_Host as usize);
     let updates = &[UpdCmd::Insert(table_id.clone(), rec1), 

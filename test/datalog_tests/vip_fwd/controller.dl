@@ -10,12 +10,9 @@ import vip_fwd.types
 //output relation VM_(vip: VIP, host: UUID)
 //VM_(vip, host) :- VM(vip, host).
 
-input relation Host[(bool, bool)]
-input relation VM[(bool, bool)]
+input relation Host[(UUID, IP)]
+input relation VM[(VIP, UUID)]
 
-output relation FwdTable[(bool, bool)]
+output relation FwdTable[(VIP, IP)]
 
 FwdTable[(vip, ip)] :- VM[(vip, host)], Host[(host, ip)].
-
-output relation VM_[(bool, bool)]
-VM_[(vip, host)] :- VM[(vip, host)].

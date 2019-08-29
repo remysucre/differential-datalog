@@ -57,13 +57,13 @@ fn main() {
     //let host_val = Record::NamedStruct(
     //    Cow::from("vip_fwd.host.HostId"),
     //    vec![(Cow::from("id"), Record::Bool(true))]);
-    let host_val = Record::Bool(true);
+    let host_val = Record::String("id1".to_string());
     let host_id = RelIdentifier::RelId(vip_fwd_host_HostId as usize);
 
     //let vm_val = Record::NamedStruct(
     //    Cow::from("vip_fwd.host.VM_"),
     //    vec![(Cow::from("vip"), Record::Bool(true))]);
-    let vm_val = Record::Bool(true);
+    let vm_val = Record::String("vip1".to_string());
     let vm_id = RelIdentifier::RelId(vip_fwd_host_VM_ as usize);
 
     let updates = &[UpdCmd::Insert(host_id, host_val),

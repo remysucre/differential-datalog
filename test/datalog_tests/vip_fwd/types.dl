@@ -1,4 +1,4 @@
-typedef VIP  = bool
-typedef IP   = bool
-typedef UUID = bool
+typedef VIP  = string
+typedef IP   = string
+typedef UUID = string
 
