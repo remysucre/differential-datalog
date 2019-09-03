@@ -151,8 +151,16 @@ impl Observer<Update<super::Value>, String> for DDlogServer
     fn on_commit(&mut self) -> Response<()> {
         if let Some(ref mut prog) = self.prog {
             let changes = prog.transaction_commit_dump_changes()?;
-            for change in changes.as_ref().iter() {
-                println!{"Got {:?}", change};
+            for (table, delta) in changes.as_ref().iter() {
+                println!{"Update to table #{:?}: ", table};
+                for (change, pol) in delta {
+                    if *pol == 1 {
+                        print!{"Insert "};
+                    } else {
+                        print!{"Delete "};
+                    }
+                    println!{"{}", *change};
+                }
             }
             for outlet in &self.outlets {
                 let mut observer = outlet.observer.lock().unwrap();

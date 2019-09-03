@@ -17,8 +17,8 @@ fn main() {
     // Construct server
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
     let redirect: HashMap<_, _> =
-        vec![(vip_fwd_host_VM as usize,
-              vip_fwd_controller_VM as usize)]
+        vec![(vip_fwd_host_VM_Host as usize,
+              vip_fwd_controller_VM_Host as usize)]
         .into_iter().collect();
     let mut s = server::DDlogServer::new(prog, redirect);
 
@@ -51,12 +51,12 @@ fn main() {
     rec_con_2.join();
 
     // Stream table from left server
-    let t_out: HashSet<_> = vec![vip_fwd_controller_FwdTable as usize]
+    let t_out: HashSet<_> = vec![vip_fwd_controller_Forward as usize]
         .into_iter().collect();
     let mut outlet1 = s.add_stream(t_out);
 
     // Stream table from left server
-    let t_out: HashSet<_> = vec![vip_fwd_controller_FwdTable as usize]
+    let t_out: HashSet<_> = vec![vip_fwd_controller_Forward as usize]
         .into_iter().collect();
     let mut outlet2 = s.add_stream(t_out);
 
@@ -92,8 +92,8 @@ fn main() {
         Record::String("id2".to_string()),
         Record::String("ip2".to_string())
     ]);
-    let table_id = RelIdentifier::RelId(vip_fwd_controller_Host as usize);
-    let updates = &[UpdCmd::Insert(table_id.clone(), rec1), 
+    let table_id = RelIdentifier::RelId(vip_fwd_controller_Host_IP as usize);
+    let updates = &[UpdCmd::Insert(table_id.clone(), rec1),
                     UpdCmd::Insert(table_id, rec2)];
 
     // Execute and transmit the update

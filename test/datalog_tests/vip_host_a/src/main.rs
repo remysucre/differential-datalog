@@ -16,8 +16,8 @@ fn main() {
     // Construct server
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
     let redirect: HashMap<_, _> =
-        vec![(vip_fwd_controller_FwdTable as usize,
-              vip_fwd_host_FwdTable_ as usize)]
+        vec![(vip_fwd_controller_Forward as usize,
+              vip_fwd_host_Forward_ as usize)]
         .into_iter().collect();
     let mut s = server::DDlogServer::new(prog, redirect);
 
@@ -37,7 +37,7 @@ fn main() {
     rec_con.join();
 
     // Stream table from left server
-    let t_out: HashSet<_> = vec![vip_fwd_host_VM as usize]
+    let t_out: HashSet<_> = vec![vip_fwd_host_VM_Host as usize]
         .into_iter().collect();
     let mut outlet = s.add_stream(t_out);
 
@@ -58,13 +58,13 @@ fn main() {
     //    Cow::from("vip_fwd.host.HostId"),
     //    vec![(Cow::from("id"), Record::Bool(true))]);
     let host_val = Record::String("id1".to_string());
-    let host_id = RelIdentifier::RelId(vip_fwd_host_HostId as usize);
+    let host_id = RelIdentifier::RelId(vip_fwd_host_Host as usize);
 
     //let vm_val = Record::NamedStruct(
     //    Cow::from("vip_fwd.host.VM_"),
     //    vec![(Cow::from("vip"), Record::Bool(true))]);
     let vm_val = Record::String("vip1".to_string());
-    let vm_id = RelIdentifier::RelId(vip_fwd_host_VM_ as usize);
+    let vm_id = RelIdentifier::RelId(vip_fwd_host_VM as usize);
 
     let updates = &[UpdCmd::Insert(host_id, host_val),
                     UpdCmd::Insert(vm_id, vm_val)];
