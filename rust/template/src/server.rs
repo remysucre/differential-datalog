@@ -49,18 +49,18 @@ pub struct DDlogServer
 {
     prog: Option<HDDlog>,
     outlets: Vec<Outlet>,
-    redirect: HashMap<RelId, RelId>
+    redirect: HashMap<super::Relations, super::Relations>
 }
 
 impl DDlogServer
 {
     // Create a new server with no outlets
-    pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
+    pub fn new(prog: HDDlog, redirect: HashMap<super::Relations, super::Relations>) -> Self {
         DDlogServer{prog: Some(prog), outlets: Vec::new(), redirect: redirect}
     }
 
     // Add a new outlet that streams a subset of the tables
-    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> UpdatesObservable {
+    pub fn add_stream(&mut self, tables: HashSet<super::Relations>) -> UpdatesObservable {
         let observer = Arc::new(Mutex::new(None));
         let outlet = Outlet{
             tables : tables,
@@ -93,7 +93,7 @@ impl DDlogServer
 // An outlet streams a subset of DDlog tables to an observer
 pub struct Outlet
 {
-    tables: HashSet<RelId>,
+    tables: HashSet<super::Relations>,
     observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
 }
 
@@ -152,7 +152,8 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         if let Some(ref mut prog) = self.prog {
             let changes = prog.transaction_commit_dump_changes()?;
             for (table, delta) in changes.as_ref().iter() {
-                println!{"Update to table #{:?}: ", table};
+                println!{"Update to table {}: ",
+                         super::relid2name(*table).unwrap()};
                 for (change, pol) in delta {
                     if *pol == 1 {
                         print!{"Insert "};
@@ -166,13 +167,14 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                 let mut observer = outlet.observer.lock().unwrap();
                 if let Some(ref mut observer) = *observer {
                     let mut upds = outlet.tables.iter().flat_map(|table| {
-                        changes.as_ref().get(table).map(|t| {
+                        let table = *table as usize;
+                        changes.as_ref().get(&table).map(|t| {
                             t.iter().map(move |(val, weight)| {
                                 debug_assert!(*weight == 1 || *weight == -1);
                                 if *weight == 1 {
-                                    Update::Insert{relid: *table, v: val.clone()}
+                                    Update::Insert{relid: table, v: val.clone()}
                                 } else {
-                                    Update::DeleteValue{relid: *table, v: val.clone()}
+                                    Update::DeleteValue{relid: table, v: val.clone()}
                                 }
                             })
                         })
@@ -193,14 +195,18 @@ impl Observer<Update<super::Value>, String> for DDlogServer
     // Apply a single update
     fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
         let upd = vec![match upd {
-            Update::Insert{relid: relid, v: v} =>
+            Update::Insert{relid: relid, v: v} => {
+                let rel = super::relid2rel(relid).expect("Table not found");
                 Update::Insert{
-                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                    v: v},
-            Update::DeleteValue{relid: relid, v: v} =>
+                    relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
+                    v: v}
+            },
+            Update::DeleteValue{relid: relid, v: v} => {
+                let rel = super::relid2rel(relid).expect("Table not found");
                 Update::DeleteValue{
-                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                    v: v},
+                    relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
+                    v: v}
+            },
             _otherwise => panic!("Operation not allowed"),
         }];
         if let Some(ref mut prog) = self.prog {
@@ -214,14 +220,18 @@ impl Observer<Update<super::Value>, String> for DDlogServer
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
-                Update::Insert{relid: relid, v: v} =>
+                Update::Insert{relid: relid, v: v} => {
+                    let rel = super::relid2rel(relid).expect("Table not found");
                     Update::Insert{
-                        relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                        v: v},
-                Update::DeleteValue{relid: relid, v: v} =>
+                        relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
+                        v: v}
+                },
+                Update::DeleteValue{relid: relid, v: v} => {
+                    let rel = super::relid2rel(relid).expect("Table not found");
                     Update::DeleteValue{
-                        relid: *self.redirect.get(&relid).unwrap_or(&relid),
-                        v: v},
+                        relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
+                        v: v}
+                },
                 _otherwise => panic!("Operation not allowed"),
             }))
         } else {

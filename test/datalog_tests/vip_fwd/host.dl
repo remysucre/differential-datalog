@@ -1,12 +1,5 @@
 import vip_fwd.types
 
-// input relation VM_(vip: VIP)
-// input relation FwdTable_(vip: VIP, ip: IP)
-// input relation HostId(id: UUID)
-// 
-// output relation VM(vip: VIP, host: UUID) 
-// output relation FwdTable(vip: VIP, ip: IP)
-
 input relation VM[VIP]
 input relation Forward_[(VIP, IP)]
 input relation Host[UUID]

@@ -16,12 +16,12 @@ fn main() -> Result<(), String> {
     // Construct right server, redirect Up table
     let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});
     let mut redirect2 = HashMap::new();
-    redirect2.insert(lr_left_Up as usize, lr_right_Up as usize);
+    redirect2.insert(lr_left_Up, lr_right_Up);
     let s2 = server::DDlogServer::new(prog2, redirect2);
 
     // Stream Up table from left server
     let mut tables = HashSet::new();
-    tables.insert(lr_left_Up as usize);
+    tables.insert(lr_left_Up);
     let mut stream = s1.add_stream(tables);
 
     // Right server subscribes to the stream
