@@ -11,6 +11,8 @@ use std::net::SocketAddr;
 use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Mutex};
 use std::borrow::Cow;
+use std::time::Duration;
+use std::thread;
 
 fn main() {
     // Construct server
@@ -53,90 +55,42 @@ fn main() {
         outlet.subscribe(Box::new(sender))
     };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// DEMO
     let host_val = Record::String("id1".to_string());
     let host_id = RelIdentifier::RelId(vip_fwd_host_Host as usize);
 
     let vm_val = Record::String("vip1".to_string());
     let vm_id = RelIdentifier::RelId(vip_fwd_host_VM as usize);
 
-    let updates = &[UpdCmd::Insert(host_id, host_val),
-                    UpdCmd::Insert(vm_id, vm_val)];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     let handle = receiver.listen();
 
     // Execute and transmit the update
-    {
-        let mut s = s_a.lock().unwrap();
-        s.on_start();
-        s.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())));
-        s.on_commit();
-    }
+    thread::spawn( move ||{
+        loop {
+            {
+                let mut s = s_a.lock().unwrap();
+                let updates = &[UpdCmd::Insert(host_id.clone(), host_val.clone()),
+                                UpdCmd::Insert(vm_id.clone(), vm_val.clone())];
+                s.on_start();
+                s.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())));
+                s.on_commit();
+
+                thread::sleep(Duration::from_millis(4000));
+                let updates = &[UpdCmd::Delete(host_id.clone(), host_val.clone()),
+                                UpdCmd::Delete(vm_id.clone(), vm_val.clone())];
+                s.on_start();
+                s.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())));
+                s.on_commit();
+            };
+            thread::sleep(Duration::from_millis(4000));
+        }
+    });
 
     //sender.lock().unwrap().disconnect();
     handle.join();
 
     //receiver.disconnect();
 
-    let mut s = s_a.lock().unwrap();
-    s.shutdown();
+    //let mut s = s_a.lock().unwrap();
+    //s.shutdown();
 }
