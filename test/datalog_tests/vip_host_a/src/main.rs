@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::borrow::Cow;
 use std::time::Duration;
 use std::thread;
+use rand::random;
 
 fn main() {
     // Construct server
@@ -55,10 +56,8 @@ fn main() {
         outlet.subscribe(Box::new(sender))
     };
 
-    let host_val = Record::String("id1".to_string());
     let host_id = RelIdentifier::RelId(vip_fwd_host_Host as usize);
 
-    let vm_val = Record::String("vip1".to_string());
     let vm_id = RelIdentifier::RelId(vip_fwd_host_VM as usize);
 
 
@@ -68,6 +67,13 @@ fn main() {
     thread::spawn( move ||{
         loop {
             {
+                let id = random::<u8>();
+                let vip = random::<u8>();
+                let host_val = Record::String(
+                    format!("id{}", 1));
+                let vm_val = Record::String(
+                    format!("vip{}", vip));
+
                 let mut s = s_a.lock().unwrap();
                 let updates = &[UpdCmd::Insert(host_id.clone(), host_val.clone()),
                                 UpdCmd::Insert(vm_id.clone(), vm_val.clone())];

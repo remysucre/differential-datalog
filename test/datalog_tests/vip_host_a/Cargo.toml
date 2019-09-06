@@ -11,3 +11,4 @@ serde = "1.0"
 tcp_channel = {path = "../vip_fwd_ddlog/tcp_channel"}
 vip_fwd = {path = "../vip_fwd_ddlog"}
 differential_datalog = {path = "../vip_fwd_ddlog/differential_datalog"}
+rand = "0.7"
